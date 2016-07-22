@@ -21,4 +21,9 @@ interface RouteDataInterface {
      * @return array
      */
     public function getFilters();
+
+    /**
+     * @return array
+     */
+    public function getReverseData();
 }

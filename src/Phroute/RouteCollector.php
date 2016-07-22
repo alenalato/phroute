@@ -26,6 +26,10 @@ class RouteCollector implements RouteDataProviderInterface {
      */
     private $routeParser;
     /**
+     * @var RouteReverser
+     */
+    private $routeReverser;
+    /**
      * @var array
      */
     private $filters = [];
@@ -37,10 +41,6 @@ class RouteCollector implements RouteDataProviderInterface {
      * @var array
      */
     private $regexToRoutesMap = [];
-    /**
-     * @var array
-     */
-    private $reverse = [];
 
     /**
      * @var array
@@ -55,8 +55,9 @@ class RouteCollector implements RouteDataProviderInterface {
     /**
      * @param RouteParser $routeParser
      */
-    public function __construct(RouteParser $routeParser = null) {
+    public function __construct(RouteParser $routeParser = null, RouteReverser $routeReverser = null) {
         $this->routeParser = $routeParser ?: new RouteParser();
+        $this->routeReverser = $routeReverser ?: new RouteReverser();
     }
 
     /**
@@ -64,7 +65,7 @@ class RouteCollector implements RouteDataProviderInterface {
      * @return bool
      */
     public function hasRoute($name) {
-        return isset($this->reverse[$name]);
+        return $this->routeReverser->hasRoute($name);
     }
 
     /**
@@ -74,34 +75,7 @@ class RouteCollector implements RouteDataProviderInterface {
      */
     public function route($name, array $args = null)
     {
-        $url = [];
-
-        $replacements = is_null($args) ? [] : array_values($args);
-
-        $variable = 0;
-
-        foreach($this->reverse[$name] as $part)
-        {
-            if(!$part['variable'])
-            {
-                $url[] = $part['value'];
-            }
-            elseif(isset($replacements[$variable]))
-            {
-                if($part['optional'])
-                {
-                    $url[] = '/';
-                }
-
-                $url[] = $replacements[$variable++];
-            }
-            elseif(!$part['optional'])
-            {
-                throw new BadRouteException("Expecting route variable '{$part['name']}'");
-            }
-        }
-
-        return implode('', $url);
+        return $this->routeReverser->route($name, $args);
     }
 
     /**
@@ -112,7 +86,7 @@ class RouteCollector implements RouteDataProviderInterface {
      * @return $this
      */
     public function addRoute($httpMethod, $route, $handler, array $filters = []) {
-        
+
         if(is_array($route))
         {
             list($route, $name) = $route;
@@ -121,18 +95,18 @@ class RouteCollector implements RouteDataProviderInterface {
         $route = $this->addPrefix($this->trim($route));
 
         list($routeData, $reverseData) = $this->routeParser->parse($route);
-        
+
         if(isset($name))
         {
-            $this->reverse[$name] = $reverseData;
+            $this->routeReverser->addRoute($name, $reverseData);
         }
-        
+
         $filters = array_merge_recursive($this->globalFilters, $filters);
 
-        isset($routeData[1]) ? 
+        isset($routeData[1]) ?
             $this->addVariableRoute($httpMethod, $routeData, $handler, $filters) :
             $this->addStaticRoute($httpMethod, $routeData, $handler, $filters);
-        
+
         return $this;
     }
 
@@ -334,12 +308,12 @@ class RouteCollector implements RouteDataProviderInterface {
                     }
 
                     $this->addRoute($valid, $route . $sep . $methodName . $params, [$classname, $method->name], $filters);
-                    
+
                     break;
                 }
             }
         }
-        
+
         return $this;
     }
 
@@ -395,7 +369,7 @@ class RouteCollector implements RouteDataProviderInterface {
             return new RouteDataArray($this->staticRoutes, [], $this->filters);
         }
 
-        return new RouteDataArray($this->staticRoutes, $this->generateVariableRouteData(), $this->filters);
+        return new RouteDataArray($this->staticRoutes, $this->generateVariableRouteData(), $this->filters, $this->routeReverser->getData());
     }
 
     /**

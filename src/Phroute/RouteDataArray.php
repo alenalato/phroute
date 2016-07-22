@@ -18,17 +18,25 @@ class RouteDataArray implements RouteDataInterface {
     private $filters;
 
     /**
+     * @var array
+     */
+    private $reverseData;
+
+    /**
      * @param array $staticRoutes
      * @param array $variableRoutes
      * @param array $filters
+     * @param array $reverseData
      */
-    public function __construct(array $staticRoutes, array $variableRoutes, array $filters)
+    public function __construct(array $staticRoutes, array $variableRoutes, array $filters, array $reverseData)
     {
         $this->staticRoutes = $staticRoutes;
 
         $this->variableRoutes = $variableRoutes;
 
         $this->filters = $filters;
+
+        $this->reverseData = $reverseData;
     }
 
     /**
@@ -53,5 +61,13 @@ class RouteDataArray implements RouteDataInterface {
     public function getFilters()
     {
         return $this->filters;
+    }
+
+    /**
+     * @return array
+     */
+    public function getReverseData()
+    {
+      return $this->reverseData;
     }
 }
